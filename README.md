@@ -1,5 +1,3 @@
-Here’s a `README.md` file for your GitHub repository. It explains the purpose of the project, how to use it, and clarifies that it’s a fun, educational tool rather than a serious religious resource.
-
 ---
 
 # Quran Word Analyzer 🕋
