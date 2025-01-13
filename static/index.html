@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuran Analizörü</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .hidden {
+            display: none;
+        }
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .custom-container {
+            max-width: 800px;
+            margin: auto;
+            padding: 2rem;
+            background-color: #1E1E1E;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .form-control {
+            background-color: #2D2D2D;
+            border: none;
+            color: #ffffff;
+            padding: 0.8rem;
+        }
+        .form-control:focus {
+            background-color: #333333;
+            color: #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.1);
+        }
+        .btn-custom {
+            background-color: #4CAF50;
+            border: none;
+            padding: 0.8rem 2rem;
+            width: 100%;
+            margin-top: 1rem;
+        }
+        .btn-custom:hover {
+            background-color: #45a049;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: #4CAF50;
+            font-weight: 300;
+        }
+        .pagination {
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .page-item .page-link {
+            background-color: #2D2D2D;
+            border: none;
+            color: #ffffff;
+        }
+        .page-item.active .page-link {
+            background-color: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="custom-container">
+            <h1>Kuran Kelime Analizörü</h1>
+            <form id="searchForm" class="mb-4">
+                <div class="mb-3">
+                    <label for="language" class="form-label">Dil Seçin</label>
+                    <select class="form-control" id="language">
+                        <option value="turkish">Türkçe</option>
+                        <option value="arabic">Arapça</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="wordInput" class="form-label">Arapça/İngilizce/Türkçe Kelime Girin</label>
+                    <input type="text" class="form-control" id="wordInput" placeholder="Kelimeyi buraya yazın...">
+                    <label for="stripSpaces" class="form-label">Ayrı bir kelime mi?</label>
+                    <input type="checkbox" name="" id="stripSpaces">
+                </div>
+                <div class="mb-3">
+                    <label for="pageSize" class="form-label">Sayfa başına sonuçlar</label>
+                    <select class="form-control" id="pageSize">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-custom">Kelimeyi Analiz Et</button>
+            </form>
+
+            <div id="results" class="mt-4" style="display: none;">
+                <h3>Sonuçlar</h3>
+                <p>Kelimmeyi içeren ayet sayısı: <span id="totalOccurrences"></span></p>
+                <p>Kelimenin toplam sayısı: <span id="totalWordCount"></span></p>
+                <div id="verses" class="mt-3"></div>
+                <nav aria-label="Sayfa navigasyonu"></nav>
+                    <ul id="pagination" class="pagination"></ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    alert("Toplanan datalar diyanet.gov.tr adresinden 14.01.2025 tarinde alınmıştır. \nBu uygulama sadece eğitim amaçlıdır.\n Kuran-ı Kerim'in anlamını öğrenmek için lütfen Diyanet İşleri Başkanlığı'nın resmi sitesini ziyaret edin.");
+        document.getElementById('language').value = 'turkish';
+    document.getElementById('stripSpaces').checked = true;
+        let allVerses = []; // Tüm ayetleri saklamak için
+        let currentPage = 1; // Mevcut sayfa
+        let pageSize = 10; // Sayfa başına ayet sayısı
+
+        // Sayfalama fonksiyonu
+        function paginate(array, page, size) {
+            return array.slice((page - 1) * size, page * size);
+        }
+
+        // Sayfalama butonlarını oluştur
+       // Kayan sayfalama butonlarını oluştur
+function renderPagination(totalPages) {
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+
+    // Önceki sayfa butonu
+    const prevLi = document.createElement('li');
+    prevLi.classList.add('page-item');
+    if (currentPage === 1) prevLi.classList.add('hidden');
+
+    const prevA = document.createElement('a');
+    prevA.classList.add('page-link');
+    prevA.href = '#';
+    prevA.textContent = 'Önceki';
+    prevA.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+            currentPage--;
+            renderVerses();
+        }
+    });
+
+    prevLi.appendChild(prevA);
+    pagination.appendChild(prevLi);
+
+    // Sayfa numaraları
+    const maxVisiblePages = 5; // Gösterilecek maksimum sayfa sayısı
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    // Baştaki ellipsis (üç nokta)
+    if (startPage > 1) {
+        const li = document.createElement('li');
+        li.classList.add('page-item');
+
+        const a = document.createElement('a');
+        a.classList.add('page-link');
+        a.href = '#';
+        a.textContent = '1';
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPage = 1;
+            renderVerses();
+        });
+
+        li.appendChild(a);
+        pagination.appendChild(li);
+
+        if (startPage > 2) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.classList.add('page-item', 'hidden');
+            const ellipsisA = document.createElement('a');
+            ellipsisA.classList.add('page-link');
+            ellipsisA.textContent = '...';
+            ellipsisLi.appendChild(ellipsisA);
+            pagination.appendChild(ellipsisLi);
+        }
+    }
+
+    // Sayfa numaraları
+    for (let i = startPage; i <= endPage; i++) {
+        const li = document.createElement('li');
+        li.classList.add('page-item');
+        if (i === currentPage) li.classList.add('active');
+
+        const a = document.createElement('a');
+        a.classList.add('page-link');
+        a.href = '#';
+        a.textContent = i;
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPage = i;
+            renderVerses();
+        });
+
+        li.appendChild(a);
+        pagination.appendChild(li);
+    }
+
+    // Sondaki ellipsis (üç nokta)
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            const ellipsisLi = document.createElement('li');
+            ellipsisLi.classList.add('page-item', 'hidden');
+            const ellipsisA = document.createElement('a');
+            ellipsisA.classList.add('page-link');
+            ellipsisA.textContent = '...';
+            ellipsisLi.appendChild(ellipsisA);
+            pagination.appendChild(ellipsisLi);
+        }
+
+        const li = document.createElement('li');
+        li.classList.add('page-item');
+
+        const a = document.createElement('a');
+        a.classList.add('page-link');
+        a.href = '#';
+        a.textContent = totalPages;
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            currentPage = totalPages;
+            renderVerses();
+        });
+
+        li.appendChild(a);
+        pagination.appendChild(li);
+    }
+
+    // Sonraki sayfa butonu
+    const nextLi = document.createElement('li');
+    nextLi.classList.add('page-item');
+    console.log(currentPage, totalPages);
+    
+    if (currentPage === totalPages) nextLi.classList.add('hidden');
+
+    const nextA = document.createElement('a');
+    nextA.classList.add('page-link');
+    nextA.href = '#';
+    nextA.textContent = 'Sonraki';
+    nextA.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderVerses();
+        }
+    });
+
+    nextLi.appendChild(nextA);
+    pagination.appendChild(nextLi);
+}
+
+        // Ayetleri render et
+        function renderVerses() {
+            const paginatedVerses = paginate(allVerses, currentPage, pageSize);
+            const versesHtml = paginatedVerses.map(verse => `
+                <div class="card bg-dark text-white mb-2">
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2" style="color:cyan;">Bölüm <b>${verse.chapter}</b>:<b>${verse.verse}</b></h6>
+                        <p class="card-text" dir="${verse.language === 'arabic' ? 'rtl' : 'ltr'}">${verse.text}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('verses').innerHTML = versesHtml;
+            renderPagination(Math.ceil(allVerses.length / pageSize));
+        }
+
+        // Form submit işlemi
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const word = document.getElementById('wordInput').value;
+            const language = document.getElementById('language').value;
+            const stripSpaces = document.getElementById('stripSpaces').checked;
+            pageSize = parseInt(document.getElementById('pageSize').value, 10);
+
+            try {
+                const response = await fetch(`http://localhost:5000/search?word=${encodeURIComponent(word)}&language=${language}&stripSpaces=${!stripSpaces}`);
+                const data = await response.json();
+
+                allVerses = data.verses; // Tüm ayetleri sakla
+                currentPage = 1; // Sayfayı sıfırla
+
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('totalOccurrences').textContent = data.total_occurrences;
+                document.getElementById('totalWordCount').textContent = data.total_word_count;
+                
+
+                renderVerses(); // Ayetleri render et
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

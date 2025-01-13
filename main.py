@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,send_from_directory
 from threading import Thread
 import time
 import re
@@ -95,7 +95,7 @@ def create_quran_dataset():
     print("Dataset saved to quran_dataset.csv")
     return df
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)
 
 def load_dataset():
@@ -104,6 +104,14 @@ def load_dataset():
     except FileNotFoundError:
         print("Dataset not found, creating new one...")
         return create_quran_dataset()
+
+@app.route('/', methods=['GET'])
+def index():
+    try:
+        return send_from_directory('static', 'index.html')
+     
+    except FileNotFoundError:
+        return jsonify({"error": "index.html not found"}), 404
 
 @app.route('/search', methods=['GET'])
 def search():
