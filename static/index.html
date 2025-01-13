@@ -282,7 +282,7 @@ function renderPagination(totalPages) {
             pageSize = parseInt(document.getElementById('pageSize').value, 10);
 
             try {
-                const response = await fetch(`http://qurananalyzer-0xjg.onrender.com/search?word=${encodeURIComponent(word)}&language=${language}&stripSpaces=${!stripSpaces}`);
+                const response = await fetch(`/search?word=${encodeURIComponent(word)}&language=${language}&stripSpaces=${!stripSpaces}`);
                 const data = await response.json();
 
                 allVerses = data.verses; // Tüm ayetleri sakla
